@@ -520,7 +520,9 @@ public class AuthorizationService {
      */
     public TokenResponse performSynchronousTokenRequest(
         @NonNull TokenRequest request,
-        @NonNull ClientAuthentication clientAuthentication) throws AuthorizationException {
+        @NonNull ClientAuthentication clientAuthentication,
+        @NonNull TokenResponseCallback callback
+    ) throws AuthorizationException {
         checkNotDisposed();
         Logger.debug("Initiating code exchange request to %s",
             request.configuration.tokenEndpoint);
@@ -528,7 +530,11 @@ public class AuthorizationService {
             request,
             clientAuthentication,
             mClientConfiguration.getConnectionBuilder(),
-            SystemClock.INSTANCE, null);
+            SystemClock.INSTANCE,
+            callback,
+            mClientConfiguration.getSkipIssuerHttpsCheck(),
+            mClientConfiguration.getSkipIssueTimeValidation(),
+            mClientConfiguration.getAllowedIssueTimeSkew());
         JSONObject json = tokenRequest.doInBackground();
         return tokenRequest.parseJson(json);
     }
