@@ -16,7 +16,6 @@ package net.openid.appauth;
 
 import static net.openid.appauth.Preconditions.checkNotNull;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
@@ -25,8 +24,8 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -42,6 +41,7 @@ import net.openid.appauth.browser.CustomTabManager;
 import net.openid.appauth.connectivity.ConnectionBuilder;
 import net.openid.appauth.internal.Logger;
 import net.openid.appauth.internal.UriUtil;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -382,7 +382,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getAuthorizationRequestIntent(
             @NonNull AuthorizationRequest request,
             @NonNull CustomTabsIntent customTabsIntent) {
@@ -413,7 +412,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getAuthorizationRequestIntent(
             @NonNull AuthorizationRequest request) {
         return getAuthorizationRequestIntent(request, createCustomTabsIntentBuilder().build());
@@ -440,7 +438,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getEndSessionRequestIntent(
             @NonNull EndSessionRequest request,
             @NonNull CustomTabsIntent customTabsIntent) {
@@ -471,7 +468,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getEndSessionRequestIntent(
             @NonNull EndSessionRequest request) {
         return getEndSessionRequestIntent(request, createCustomTabsIntentBuilder().build());
@@ -559,7 +555,7 @@ public class AuthorizationService {
     /**
      * Disposes state that will not normally be handled by garbage collection. This should be
      * called when the authorization service is no longer required, including when any owning
-     * activity is paused or destroyed (i.e. in {@link android.app.Activity#onStop()}).
+     * activity is paused or destroyed (i.e. in {@link Activity#onStop()}).
      */
     public void dispose() {
         if (mDisposed) {
