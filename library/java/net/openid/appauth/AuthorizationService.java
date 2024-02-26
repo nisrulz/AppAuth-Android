@@ -506,9 +506,7 @@ public class AuthorizationService {
                 mClientConfiguration.getConnectionBuilder(),
                 SystemClock.INSTANCE,
                 callback,
-                mClientConfiguration.getSkipIssuerHttpsCheck(),
-                mClientConfiguration.getSkipIssueTimeValidation(),
-                mClientConfiguration.getAllowedIssueTimeSkew())
+                mClientConfiguration.getSkipIssuerHttpsCheck())
                 .execute();
     }
 
@@ -587,8 +585,6 @@ public class AuthorizationService {
         private TokenResponseCallback mCallback;
         private Clock mClock;
         private boolean mSkipIssuerHttpsCheck;
-        private boolean mSkipIssueTimeValidation;
-        private Long mAllowedIssueTimeSkew;
 
         private AuthorizationException mException;
 
@@ -597,17 +593,13 @@ public class AuthorizationService {
                          @NonNull ConnectionBuilder connectionBuilder,
                          Clock clock,
                          TokenResponseCallback callback,
-                         Boolean skipIssuerHttpsCheck,
-                         Boolean skipissueTimeValidation,
-                         Long allowedIssueTimeSkew) {
+                         Boolean skipIssuerHttpsCheck) {
             mRequest = request;
             mClientAuthentication = clientAuthentication;
             mConnectionBuilder = connectionBuilder;
             mClock = clock;
             mCallback = callback;
             mSkipIssuerHttpsCheck = skipIssuerHttpsCheck;
-            mSkipIssueTimeValidation = skipissueTimeValidation;
-            mAllowedIssueTimeSkew = allowedIssueTimeSkew;
         }
 
         @Override
@@ -718,9 +710,7 @@ public class AuthorizationService {
                     idToken.validate(
                             mRequest,
                             mClock,
-                            mSkipIssuerHttpsCheck,
-                            mSkipIssueTimeValidation,
-                            mAllowedIssueTimeSkew
+                            mSkipIssuerHttpsCheck
                     );
                 } catch (AuthorizationException ex) {
                     mCallback.onTokenRequestCompleted(null, ex);
