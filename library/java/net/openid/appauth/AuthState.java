@@ -562,7 +562,7 @@ public class AuthState {
         TokenResponse response = null;
         AuthorizationException exception = null;
         try {
-            response = service.performSynchronousTokenRequest(createTokenRefreshRequest(refreshTokenAdditionalParams), clientAuth);
+            response = service.performSynchronousTokenRequest(createTokenRefreshRequest(refreshTokenAdditionalParams), clientAuth, null);
         } catch (AuthorizationException e) {
             exception = e;
         }
