@@ -9,7 +9,7 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath 'com.android.tools.build:gradle:8.9.0'
         classpath 'org.ajoberstar.grgit:grgit-gradle:4.1.1'
         classpath 'org.jacoco:org.jacoco.core:0.8.10'
     }
