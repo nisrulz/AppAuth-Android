@@ -1,0 +1,20 @@
+name: Force Jitpack Build
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Trigger Jitpack Build
+        run: |
+          curl -X POST https://jitpack.io/api/builds \
+          -d 'scm=github.com' \
+          -d 'repo=nisrulz/AppAuth-Android' \
+          -d 'branch=develop'
