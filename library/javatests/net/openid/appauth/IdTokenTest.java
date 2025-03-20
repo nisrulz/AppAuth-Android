@@ -272,7 +272,7 @@ public class IdTokenTest {
             .setRedirectUri(TEST_APP_REDIRECT_URI)
             .build();
         Clock clock = SystemClock.INSTANCE;
-        idToken.validate(tokenRequest, clock, true);
+        idToken.validate(tokenRequest, clock, true, false, null);
     }
 
     @Test(expected = AuthorizationException.class)
@@ -347,6 +347,34 @@ public class IdTokenTest {
 
         String serviceDocJsonWithIssuerMissingHost = getDiscoveryDocJsonWithIssuer(
             "https://some.issuer/#/fragment");
+        AuthorizationServiceDiscovery discoveryDoc = new AuthorizationServiceDiscovery(
+            new JSONObject(serviceDocJsonWithIssuerMissingHost));
+        AuthorizationServiceConfiguration serviceConfiguration =
+            new AuthorizationServiceConfiguration(discoveryDoc);
+        TokenRequest tokenRequest = new TokenRequest.Builder(serviceConfiguration, TEST_CLIENT_ID)
+            .setAuthorizationCode(TEST_AUTH_CODE)
+            .setCodeVerifier(TEST_CODE_VERIFIER)
+            .setGrantType(GrantTypeValues.AUTHORIZATION_CODE)
+            .setRedirectUri(TEST_APP_REDIRECT_URI)
+            .build();
+        Clock clock = SystemClock.INSTANCE;
+        idToken.validate(tokenRequest, clock);
+    }
+
+    @Test(expected = AuthorizationException.class)
+    public void testValidate_shouldFailOnIssuerMissingScheme()
+        throws AuthorizationException, JSONException, MissingArgumentException {
+        Long nowInSeconds = SystemClock.INSTANCE.getCurrentTimeMillis() / 1000;
+        Long tenMinutesInSeconds = (long) (10 * 60);
+        IdToken idToken = new IdToken(
+            "some.issuer",
+            TEST_SUBJECT,
+            Collections.singletonList(TEST_CLIENT_ID),
+            nowInSeconds + tenMinutesInSeconds,
+            nowInSeconds
+        );
+
+        String serviceDocJsonWithIssuerMissingHost = getDiscoveryDocJsonWithIssuer("some.issuer");
         AuthorizationServiceDiscovery discoveryDoc = new AuthorizationServiceDiscovery(
             new JSONObject(serviceDocJsonWithIssuerMissingHost));
         AuthorizationServiceConfiguration serviceConfiguration =
@@ -462,6 +490,60 @@ public class IdTokenTest {
         TokenRequest tokenRequest = getAuthCodeExchangeRequestWithNonce();
         Clock clock = SystemClock.INSTANCE;
         idToken.validate(tokenRequest, clock);
+    }
+
+    @Test
+    public void testValidate_withSkipIssueTimeValidation() throws AuthorizationException {
+        Long nowInSeconds = SystemClock.INSTANCE.getCurrentTimeMillis() / 1000;
+        Long anHourInSeconds = (long) (60 * 60);
+        IdToken idToken = new IdToken(
+            TEST_ISSUER,
+            TEST_SUBJECT,
+            Collections.singletonList(TEST_CLIENT_ID),
+            nowInSeconds,
+            nowInSeconds - (anHourInSeconds * 2),
+            TEST_NONCE,
+            TEST_CLIENT_ID
+        );
+        TokenRequest tokenRequest = getAuthCodeExchangeRequestWithNonce();
+        Clock clock = SystemClock.INSTANCE;
+        idToken.validate(tokenRequest, clock, false, true, null);
+    }
+
+    @Test(expected = AuthorizationException.class)
+    public void testValidate_shouldFailOnIssuedAtOverConfiguredTimeSkew() throws AuthorizationException {
+        Long nowInSeconds = SystemClock.INSTANCE.getCurrentTimeMillis() / 1000;
+        Long anHourInSeconds = (long) (60 * 60);
+        IdToken idToken = new IdToken(
+            TEST_ISSUER,
+            TEST_SUBJECT,
+            Collections.singletonList(TEST_CLIENT_ID),
+            nowInSeconds,
+            nowInSeconds - anHourInSeconds - 1,
+            TEST_NONCE,
+            TEST_CLIENT_ID
+        );
+        TokenRequest tokenRequest = getAuthCodeExchangeRequestWithNonce();
+        Clock clock = SystemClock.INSTANCE;
+        idToken.validate(tokenRequest, clock, false, false, anHourInSeconds);
+    }
+
+    @Test
+    public void testValidate_withConfiguredTimeSkew() throws AuthorizationException {
+        Long nowInSeconds = SystemClock.INSTANCE.getCurrentTimeMillis() / 1000;
+        Long anHourInSeconds = (long) (60 * 60);
+        IdToken idToken = new IdToken(
+            TEST_ISSUER,
+            TEST_SUBJECT,
+            Collections.singletonList(TEST_CLIENT_ID),
+            nowInSeconds,
+            nowInSeconds - anHourInSeconds,
+            TEST_NONCE,
+            TEST_CLIENT_ID
+        );
+        TokenRequest tokenRequest = getAuthCodeExchangeRequestWithNonce();
+        Clock clock = SystemClock.INSTANCE;
+        idToken.validate(tokenRequest, clock, false, false, anHourInSeconds);
     }
 
     @Test(expected = AuthorizationException.class)

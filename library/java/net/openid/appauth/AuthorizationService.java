@@ -16,7 +16,6 @@ package net.openid.appauth;
 
 import static net.openid.appauth.Preconditions.checkNotNull;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
@@ -25,8 +24,8 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -42,6 +41,7 @@ import net.openid.appauth.browser.CustomTabManager;
 import net.openid.appauth.connectivity.ConnectionBuilder;
 import net.openid.appauth.internal.Logger;
 import net.openid.appauth.internal.UriUtil;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -382,7 +382,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getAuthorizationRequestIntent(
             @NonNull AuthorizationRequest request,
             @NonNull CustomTabsIntent customTabsIntent) {
@@ -413,7 +412,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getAuthorizationRequestIntent(
             @NonNull AuthorizationRequest request) {
         return getAuthorizationRequestIntent(request, createCustomTabsIntentBuilder().build());
@@ -440,7 +438,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getEndSessionRequestIntent(
             @NonNull EndSessionRequest request,
             @NonNull CustomTabsIntent customTabsIntent) {
@@ -471,7 +468,6 @@ public class AuthorizationService {
      * @throws android.content.ActivityNotFoundException if no suitable browser is available to
      *     perform the authorization flow.
      */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public Intent getEndSessionRequestIntent(
             @NonNull EndSessionRequest request) {
         return getEndSessionRequestIntent(request, createCustomTabsIntentBuilder().build());
@@ -506,8 +502,37 @@ public class AuthorizationService {
                 mClientConfiguration.getConnectionBuilder(),
                 SystemClock.INSTANCE,
                 callback,
-                mClientConfiguration.getSkipIssuerHttpsCheck())
+                mClientConfiguration.getSkipIssuerHttpsCheck(),
+                mClientConfiguration.getSkipIssueTimeValidation(),
+                mClientConfiguration.getAllowedIssueTimeSkew())
                 .execute();
+    }
+
+    /**
+     * Sends a request to the authorization service to exchange a code granted as part of an
+     * authorization request for a token. The result of this request will be sent to the provided
+     * callback handler.
+     * @return TokenResponse
+     */
+    public TokenResponse performSynchronousTokenRequest(
+        @NonNull TokenRequest request,
+        @NonNull ClientAuthentication clientAuthentication,
+        @NonNull TokenResponseCallback callback
+    ) throws AuthorizationException {
+        checkNotDisposed();
+        Logger.debug("Initiating code exchange request to %s",
+            request.configuration.tokenEndpoint);
+        TokenRequestTask tokenRequest = new TokenRequestTask(
+            request,
+            clientAuthentication,
+            mClientConfiguration.getConnectionBuilder(),
+            SystemClock.INSTANCE,
+            callback,
+            mClientConfiguration.getSkipIssuerHttpsCheck(),
+            mClientConfiguration.getSkipIssueTimeValidation(),
+            mClientConfiguration.getAllowedIssueTimeSkew());
+        JSONObject json = tokenRequest.doInBackground();
+        return tokenRequest.parseJson(json);
     }
 
     /**
@@ -530,7 +555,7 @@ public class AuthorizationService {
     /**
      * Disposes state that will not normally be handled by garbage collection. This should be
      * called when the authorization service is no longer required, including when any owning
-     * activity is paused or destroyed (i.e. in {@link android.app.Activity#onStop()}).
+     * activity is paused or destroyed (i.e. in {@link Activity#onStop()}).
      */
     public void dispose() {
         if (mDisposed) {
@@ -585,6 +610,8 @@ public class AuthorizationService {
         private TokenResponseCallback mCallback;
         private Clock mClock;
         private boolean mSkipIssuerHttpsCheck;
+        private boolean mSkipIssueTimeValidation;
+        private Long mAllowedIssueTimeSkew;
 
         private AuthorizationException mException;
 
@@ -593,13 +620,17 @@ public class AuthorizationService {
                          @NonNull ConnectionBuilder connectionBuilder,
                          Clock clock,
                          TokenResponseCallback callback,
-                         Boolean skipIssuerHttpsCheck) {
+                         Boolean skipIssuerHttpsCheck,
+                         Boolean skipissueTimeValidation,
+                         Long allowedIssueTimeSkew) {
             mRequest = request;
             mClientAuthentication = clientAuthentication;
             mConnectionBuilder = connectionBuilder;
             mClock = clock;
             mCallback = callback;
             mSkipIssuerHttpsCheck = skipIssuerHttpsCheck;
+            mSkipIssueTimeValidation = skipissueTimeValidation;
+            mAllowedIssueTimeSkew = allowedIssueTimeSkew;
         }
 
         @Override
@@ -659,9 +690,17 @@ public class AuthorizationService {
 
         @Override
         protected void onPostExecute(JSONObject json) {
+            try {
+                TokenResponse tokenResponse = parseJson(json);
+                mCallback.onTokenRequestCompleted(tokenResponse, null);
+            } catch (AuthorizationException authorizationException) {
+                mCallback.onTokenRequestCompleted(null, authorizationException);
+            }
+        }
+
+        public TokenResponse parseJson(JSONObject json) throws AuthorizationException {
             if (mException != null) {
-                mCallback.onTokenRequestCompleted(null, mException);
-                return;
+                throw mException;
             }
 
             if (json.has(AuthorizationException.PARAM_ERROR)) {
@@ -669,29 +708,26 @@ public class AuthorizationService {
                 try {
                     String error = json.getString(AuthorizationException.PARAM_ERROR);
                     ex = AuthorizationException.fromOAuthTemplate(
-                            TokenRequestErrors.byString(error),
-                            error,
-                            json.optString(AuthorizationException.PARAM_ERROR_DESCRIPTION, null),
-                            UriUtil.parseUriIfAvailable(
-                                    json.optString(AuthorizationException.PARAM_ERROR_URI)));
+                        TokenRequestErrors.byString(error),
+                        error,
+                        json.optString(AuthorizationException.PARAM_ERROR_DESCRIPTION, null),
+                        UriUtil.parseUriIfAvailable(
+                            json.optString(AuthorizationException.PARAM_ERROR_URI)));
                 } catch (JSONException jsonEx) {
                     ex = AuthorizationException.fromTemplate(
-                            GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                            jsonEx);
+                        GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                        jsonEx);
                 }
-                mCallback.onTokenRequestCompleted(null, ex);
-                return;
+                throw ex;
             }
 
             TokenResponse response;
             try {
                 response = new TokenResponse.Builder(mRequest).fromResponseJson(json).build();
             } catch (JSONException jsonEx) {
-                mCallback.onTokenRequestCompleted(null,
-                        AuthorizationException.fromTemplate(
-                                GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                                jsonEx));
-                return;
+                throw AuthorizationException.fromTemplate(
+                    GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                    jsonEx);
             }
 
             if (response.idToken != null) {
@@ -699,27 +735,26 @@ public class AuthorizationService {
                 try {
                     idToken = IdToken.from(response.idToken);
                 } catch (IdTokenException | JSONException ex) {
-                    mCallback.onTokenRequestCompleted(null,
-                            AuthorizationException.fromTemplate(
-                                    GeneralErrors.ID_TOKEN_PARSING_ERROR,
-                                    ex));
-                    return;
+                    throw AuthorizationException.fromTemplate(
+                        GeneralErrors.ID_TOKEN_PARSING_ERROR,
+                        ex);
                 }
 
                 try {
                     idToken.validate(
                             mRequest,
                             mClock,
-                            mSkipIssuerHttpsCheck
+                            mSkipIssuerHttpsCheck,
+                            mSkipIssueTimeValidation,
+                            mAllowedIssueTimeSkew
                     );
                 } catch (AuthorizationException ex) {
-                    mCallback.onTokenRequestCompleted(null, ex);
-                    return;
+                    throw ex;
                 }
             }
             Logger.debug("Token exchange with %s completed",
-                    mRequest.configuration.tokenEndpoint);
-            mCallback.onTokenRequestCompleted(response, null);
+                mRequest.configuration.tokenEndpoint);
+            return response;
         }
 
         /**

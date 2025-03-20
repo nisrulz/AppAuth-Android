@@ -4,13 +4,14 @@ apply from: 'config/keystore.gradle'
 
 buildscript {
     repositories {
-        gradlePluginPortal()
         google()
+        mavenCentral()
+        gradlePluginPortal()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.1'
+        classpath 'com.android.tools.build:gradle:8.9.0'
         classpath 'org.ajoberstar.grgit:grgit-gradle:4.1.1'
-        classpath 'org.jacoco:org.jacoco.core:0.8.7'
+        classpath 'org.jacoco:org.jacoco.core:0.8.10'
     }
 }
 
@@ -18,6 +19,12 @@ subprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    tasks.configureEach { task ->
+        if (task.name.contains("androidJavadoc")) {
+            task.enabled = false
+        }
     }
 }
 
@@ -40,11 +47,11 @@ try {
 }
 
 project.ext {
-    minSdkVersion = 16
-    compileSdkVersion = 33
+    minSdkVersion = 21
+    compileSdkVersion = 34
 
     googleVersions = [
-        glide                 : '4.12.0',
+        glide                 : '4.16.0',
         material              : '1.3.0',
     ]
 
@@ -58,7 +65,7 @@ project.ext {
     jodaVersion = '2.10.10'
 }
 
-task showVersion {
+tasks.register('showVersion') {
     doLast {
         logger.lifecycle("Version ID: " + project.versionNum)
         logger.lifecycle("Version Name: " + project.versionName)

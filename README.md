@@ -1,7 +1,7 @@
 ![AppAuth for Android](https://rawgit.com/openid/AppAuth-Android/master/appauth_lockup.svg)
 
-[![Download](https://img.shields.io/maven-central/v/net.openid/appauth)](https://search.maven.org/search?q=g:net.openid%20appauth)
-[![Javadocs](http://javadoc.io/badge/net.openid/appauth.svg)](http://javadoc.io/doc/net.openid/appauth)
+[Download from Jitpack](https://www.jitpack.io/#nisrulz/AppAuth-Android/update~sdk-to-support-jitpack-SNAPSHOT)
+
 [![Build Status](https://github.com/openid/AppAuth-Android/actions/workflows/build.yml/badge.svg)](https://github.com/openid/AppAuth-Android/actions/workflows/build.yml)
 [![codecov.io](https://codecov.io/github/openid/AppAuth-Android/coverage.svg?branch=master)](https://codecov.io/github/openid/AppAuth-Android?branch=master)
 
@@ -619,7 +619,7 @@ AppAuthConfiguration appAuthConfig = new AppAuthConfiguration.Builder()
 
 ID Token validation was introduced in `0.8.0` but not all authorization servers or configurations support it correctly.
 
-- For testing environments [setSkipIssuerHttpsCheck](https://github.com/openid/AppAuth-Android/blob/master/library/java/net/openid/appauth/AppAuthConfiguration.java#L129) can be used to bypass the fact the issuer needs to be HTTPS.
+- For testing environments [setSkipIssuerHttpsCheck](https://github.com/openid/AppAuth-Android/blob/master/library/java/net/openid/appauth/AppAuthConfiguration.java#L143) can be used to bypass the fact the issuer needs to be HTTPS.
 
 ```java
 AppAuthConfiguration appAuthConfig = new AppAuthConfiguration.Builder()
@@ -633,6 +633,22 @@ AppAuthConfiguration appAuthConfig = new AppAuthConfiguration.Builder()
 AuthorizationRequest authRequest = authRequestBuilder
     .setNonce(null)
     .build();
+```
+
+- To change the default allowed time skew of 10 minutes for the issue time, [setAllowedIssueTimeSkew](https://github.com/openid/AppAuth-Android/blob/master/library/java/net/openid/appauth/AppAuthConfiguration.java#L159) can be used.
+
+```java
+AppAuthConfiguration appAuthConfig = new AppAuthConfiguration.Builder()
+    .setAllowedIssueTimeSkew(THIRTY_MINUTES_IN_SECONDS)
+    .build()
+```
+
+- For testing environments [setSkipIssueTimeValidation](https://github.com/openid/AppAuth-Android/blob/master/library/java/net/openid/appauth/AppAuthConfiguration.java#L151) can be used to bypass the issue time validation.
+
+```java
+AppAuthConfiguration appAuthConfig = new AppAuthConfiguration.Builder()
+    .setSkipIssueTimeValidation(true)
+    .build()
 ```
 
 ## Dynamic client registration
