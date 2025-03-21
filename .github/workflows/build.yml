@@ -1,5 +1,5 @@
 ---
-name: build
+name: Build Project
 
 on:
   # Allows to run this workflow when a commit it pushed to the branch
