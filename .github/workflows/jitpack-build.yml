@@ -24,7 +24,4 @@ jobs:
 
       - name: Trigger Jitpack Build
         run: |
-          curl -X POST https://jitpack.io/api/builds \
-          -d 'scm=github.com' \
-          -d 'repo=nisrulz/AppAuth-Android' \
-          -d 'branch=develop'
+          curl https://jitpack.io/api/builds/com.github.nisrulz/AppAuth-Android/develop-SNAPSHOT
